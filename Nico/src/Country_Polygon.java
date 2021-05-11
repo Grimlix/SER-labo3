@@ -1,18 +1,22 @@
+import org.json.simple.JSONArray;
 
-
-
+import java.util.List;
 
 public class Country_Polygon extends Country {
 
-    private int nb_coordinates;
+    private List<String> coordinates_list;
 
-    public Country_Polygon(String name, String abrv, int nb_coordinates) {
+    public Country_Polygon(String name, String abrv, List<String> coordinates_list) {
         super(name, abrv);
-        this.nb_coordinates = nb_coordinates;
+        this.coordinates_list = coordinates_list;
+    }
+
+    public List<String> getCoordinates_list() {
+        return coordinates_list;
     }
 
     @Override
     public String toString(){
-        return super.toString() + "\n\t  - " + nb_coordinates + " coordinates";
+        return super.toString() + "\n\t  - " + coordinates_list.size() + " coordinates";
     }
 }

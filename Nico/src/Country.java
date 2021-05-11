@@ -1,5 +1,5 @@
-
-
+import java.util.ArrayList;
+import java.util.List;
 
 public class Country {
 
@@ -12,6 +12,11 @@ public class Country {
     }
 
     public Country (){}
+
+    public String getName() {
+        return name;
+    }
+
 
     @Override
     public String toString() {
