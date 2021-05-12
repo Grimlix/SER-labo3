@@ -3,7 +3,7 @@
  * 2. J'ai lu qu'il faut mettre xmlns="http://www.opengis.net/kml/2.2" dans la balise <kml> mais
  * j'arrive pas et ça marche sans.
  * 3. Certains pays s'affichent pas bien je sais pas si c'est normal
- *
+ * 4. Je n'arrive pas a faire un beau formattage des coordonnées.
  *  */
 
 /* REFERENCES
@@ -18,7 +18,6 @@
 import org.jdom2.Document;
 import org.jdom2.Element;
 
-
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 import org.json.simple.JSONArray;
@@ -29,6 +28,7 @@ import org.json.simple.parser.ParseException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,8 +40,7 @@ public class Main {
         JSONParser jsonParser = new JSONParser();
 
         String filename = "countries.geojson";
-        List<Country> country_list = new ArrayList<>();
-        parsing_country_list(jsonParser, filename, country_list);
+        List<Country> country_list = parsing_country_list(jsonParser, filename);
 
         // AFFICHAGE CLASSIQUE
         for(int i = 0; i < country_list.size(); i++){
@@ -58,12 +57,16 @@ public class Main {
     }
 
     /**
-     * Cette fonction
-     * @param nom_tournoi : le nom du tournoi actuel
-     * @param numero_partie : le numéro de la partie dans le tournoi (dans l'ordre)
-     * @exception IOException si on n'arrive pas à écrire ou fermer le nouveau fichier (FileWriter)
+     * Cette fonction lit un fichier geojson et en retourne une liste de pays
+     * @param jsonParser : le parser
+     * @param filename : le nom du fichier geojson à lire
+     * @exception IOException : si on n'arrive pas à écrire ou fermer le nouveau fichier (FileReader)
+     * @exception ParseException : si il y a un problème avec le parser
+     * @return : une liste de tous les pays lu dans le fichier geojson
      */
-    private static void parsing_country_list(JSONParser jsonParser, String filename, List<Country> country_list){
+    private static List<Country> parsing_country_list(JSONParser jsonParser, String filename){
+
+        List<Country> country_list = new ArrayList<>();
 
         try (FileReader reader = new FileReader(filename)){
 
@@ -76,6 +79,8 @@ public class Main {
             // Loop sur tous les pays dans "features" et on les met tous dans un tableau
             for (int i_features = 0; i_features < features.size(); i_features++){
 
+                // On prépare le pays, la liste de liste de coordonnées (en cas de multipolygone)
+                // et la liste de coordonnées de base
                 Country country =  new Country();
                 List<ArrayList<String>> list_of_coordinates_list = new ArrayList<ArrayList<String>>();
                 ArrayList<String> coordinates_list = new ArrayList<String>();
@@ -95,14 +100,13 @@ public class Main {
 
                 // On utilise le type de coordonnées pour pouvoir enregistrer 1 tableau de coordonnées
                 //pour les type polygone et plusieurs tableaux de coordonnées pour les multipolygone
-                int nbr_coordinates;
                 if (coordinates_type.equals("Polygon")){
 
                     // On recupère le seul tableau de coordonnées et on regarde sa taille
                     JSONArray coordinates_arr = (JSONArray) coordinates.get(0);
 
                     //On crée la liste de coordinates reformulées.
-                    reformulate_coordinates(coordinates_arr, coordinates_list);
+                    coordinates_list = reformulate_coordinates(coordinates_arr);
 
                     //On crée le pays de type polygone
                     country = new Country_Polygon(country_name, country_abrv, coordinates_list);
@@ -115,8 +119,7 @@ public class Main {
                     for(int i_coordinates = 0; i_coordinates < nbr_arr; i_coordinates++){
                         JSONArray arr = (JSONArray) coordinates.get(i_coordinates);
                         JSONArray arr2 = (JSONArray) arr.get(0);
-                        coordinates_list = new ArrayList<String>();
-                        reformulate_coordinates(arr2, coordinates_list);
+                        coordinates_list = reformulate_coordinates(arr2);
                         list_of_coordinates_list.add(coordinates_list);
                     }
 
@@ -130,16 +133,33 @@ public class Main {
         } catch (IOException | ParseException e){
             e.printStackTrace();
         }
+
+        return country_list;
     }
 
-    private static void reformulate_coordinates(JSONArray arr, ArrayList<String> coordinates_list){
-        for (int a = 0; a < arr.size(); a++){
-            String coordinate = arr.get(a).toString();
+    /**
+     * Cette methode enlève les ][ dans les coordonnées d'un tableau pour le fichier kml puisse les lire
+     * @param arr : le tableau contenant les coordonnées
+     * @return : une liste de toutes les coordonnées reformulée
+     */
+    private static ArrayList<String> reformulate_coordinates(JSONArray arr){
+
+        ArrayList<String> coordinates_list = new ArrayList<>();
+
+        for (Object o : arr) {
+            String coordinate = o.toString();
             coordinate = coordinate.replace("[", "").replace("]", "");
             coordinates_list.add(coordinate);
         }
+        return coordinates_list;
     }
 
+    /**
+     * Cette methode permet la création d'un fichier kml
+     * @param filename : le nom du fichier kml
+     * @param country_list : la lise des pays qu'il faut mettre dans le fichier kml
+     * @exception IOException : pour FileWriter
+     */
     private static void creating_KML_file(String filename, List<Country> country_list) throws IOException {
 
         Element kml = new Element("kml");
@@ -182,6 +202,11 @@ public class Main {
 
     }
 
+    /**
+     * Cette methode créer un grand string de toutes les coordonnées.
+     * @param list : la liste des coordonnées
+     * @return : un stringbuilder de toutes les coordonnées prête à être écrite dans le fichier kml
+     */
     private static StringBuilder generate_all_coordinates(List<String> list){
         StringBuilder str = new StringBuilder();
         for (String s : list) {
@@ -191,7 +216,11 @@ public class Main {
         return str;
     }
 
-
+    /**
+     * Cette methode génère les balises kml <linearRing></linearRing> et <coordinates></coordinates>.
+     * @param parent_elem : l'élément parent sur lequel il faut coller l'élément linearRing
+     * @return : l'élément JSON coordinates dans lequel on va y mettre les coordonnées.
+     */
     private static Element genereate_kml_linearRing(Element parent_elem){
 
         /*  VERSION AVEC POLYGONE, PAS CELLE QU?ON VEUT */
