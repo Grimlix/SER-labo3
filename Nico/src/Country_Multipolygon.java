@@ -10,6 +10,10 @@ public class Country_Multipolygon extends Country {
         this.list_of_coordinates_list = list_of_coordinates_list;
     }
 
+    public List<ArrayList<String>> getList_of_coordinates_list() {
+        return list_of_coordinates_list;
+    }
+
     @Override
     public String toString(){
         StringBuilder str = new StringBuilder();

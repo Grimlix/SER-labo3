@@ -1,16 +1,20 @@
 /* Question/TODO:
  * 1. Certains ISO_A3 valent "-99" je sais pas trop pourquoi.
- * 2. https://gis.stackexchange.com/questions/260211/what-are-the-minimum-kml-file-requirement-to-draw-multiple-polygons
- * 3. J'ai lu qu'il faut mettre xmlns="http://www.opengis.net/kml/2.2" dans la balise <kml> mais
+ * 2. J'ai lu qu'il faut mettre xmlns="http://www.opengis.net/kml/2.2" dans la balise <kml> mais
  * j'arrive pas et ça marche sans.
- * 4. Pour l'instant ça affiche tout le pays pas juste les frontières
- * 5. Pour l'instant il n'y a pas de pays multpoylgon
- *
+ * 3. Certains pays s'affichent pas bien je sais pas si c'est normal
  *
  *  */
 
+/* REFERENCES
+*
+* https://www.sigterritoires.fr/index.php/kml-pour-bien-commencer/
+* https://gis.stackexchange.com/questions/260211/what-are-the-minimum-kml-file-requirement-to-draw-multiple-polygons
+* http://learningzone.rspsoc.org.uk/index.php/Learning-Materials/Introduction-to-OGC-Standards/9.2-Example-of-KML-file-types#9.2.4
+* https://www.i-programmer.info/projects/131-mapping-a-gis/1276-inside-the-kml-placemark.html?start=1
+*
+*  */
 
-import org.jdom2.Attribute;
 import org.jdom2.Document;
 import org.jdom2.Element;
 
@@ -53,6 +57,12 @@ public class Main {
 
     }
 
+    /**
+     * Cette fonction
+     * @param nom_tournoi : le nom du tournoi actuel
+     * @param numero_partie : le numéro de la partie dans le tournoi (dans l'ordre)
+     * @exception IOException si on n'arrive pas à écrire ou fermer le nouveau fichier (FileWriter)
+     */
     private static void parsing_country_list(JSONParser jsonParser, String filename, List<Country> country_list){
 
         try (FileReader reader = new FileReader(filename)){
@@ -126,7 +136,6 @@ public class Main {
         for (int a = 0; a < arr.size(); a++){
             String coordinate = arr.get(a).toString();
             coordinate = coordinate.replace("[", "").replace("]", "");
-            //coordinate = coordinate + ",10";
             coordinates_list.add(coordinate);
         }
     }
@@ -135,38 +144,34 @@ public class Main {
 
         Element kml = new Element("kml");
         Document document = new Document(kml);
-        Element doc = new Element("Document");
+        Element doc = new Element("Document"); // KML doit avoir qu'un seul element en dessous de la racine
 
+        // TODO : Fonction pas
         // xmlns="http://www.opengis.net/kml/2.2"
         //kml.setAttribute(new Attribute("xmlns", "http://www.opengis.net/kml/2.2"));
 
         for(Country country : country_list){
 
+            // Elements de base (Placemark, nom_pays)
             Element placemark = new Element("Placemark");
             doc.addContent(placemark);
             placemark.addContent(new Element("name").setText(country.getName()));
 
-            if(country.getClass() == Country_Polygon.class){
-                Element polygon = new Element("Polygon");
-                placemark.addContent(polygon);
-                polygon.addContent(new Element("altitudeMode").setText("absolute"));
-                Element outerBoundaryIs = new Element("outerBoundaryIs");
-                polygon.addContent(outerBoundaryIs);
-                Element linearRing = new Element("LinearRing");
-                outerBoundaryIs.addContent(linearRing);
-                Element coordinates = new Element("coordinates");
-                linearRing.addContent(coordinates);
+            if(country.getClass() == Country_Polygon.class){ //type polygon
+                Element coordinates = genereate_kml_linearRing(placemark);
+                StringBuilder all_coordinates = generate_all_coordinates(((Country_Polygon) country).getCoordinates_list());
 
-                StringBuilder str = new StringBuilder("\n\n");
-                for(int i = 0; i < ((Country_Polygon) country).getCoordinates_list().size(); i++){
-                    str.append(((Country_Polygon) country).getCoordinates_list().get(i));
-                    str.append("\n\t\t\t\t");
+                coordinates.setText(all_coordinates.toString());
+
+            } else { //type multipolygon
+
+                //Loop sur tous les polygones
+                for(int i = 0; i < ((Country_Multipolygon) country).getList_of_coordinates_list().size(); i++){
+                    Element coordinates = genereate_kml_linearRing(placemark);
+                    StringBuilder all_coordinates = generate_all_coordinates(((Country_Multipolygon) country).getList_of_coordinates_list().get(i));
+                    coordinates.setText(all_coordinates.toString());
                 }
-                str.append("\n");
-                coordinates.setText(str.toString());
-
             }
-
         }
 
         document.getRootElement().addContent(doc);
@@ -175,6 +180,37 @@ public class Main {
         xmlOutputter.setFormat(Format.getPrettyFormat());
         xmlOutputter.output(document, new FileWriter(filename));
 
+    }
+
+    private static StringBuilder generate_all_coordinates(List<String> list){
+        StringBuilder str = new StringBuilder();
+        for (String s : list) {
+            str.append(s);
+            str.append("\n\t\t\t\t");
+        }
+        return str;
+    }
+
+
+    private static Element genereate_kml_linearRing(Element parent_elem){
+
+        /*  VERSION AVEC POLYGONE, PAS CELLE QU?ON VEUT */
+        //Element polygon = new Element("Polygon");
+        //parent_elem.addContent(polygon);
+        //polygon.addContent(new Element("altitudeMode").setText("absolute"));
+        //Element outerBoundaryIs = new Element("outerBoundaryIs");
+        //polygon.addContent(outerBoundaryIs);
+        //Element linearRing = new Element("LinearRing");
+        //outerBoundaryIs.addContent(linearRing);
+        //Element coordinates = new Element("coordinates");
+        //linearRing.addContent(coordinates);
+
+        Element linearRing = new Element("LinearRing");
+        parent_elem.addContent(linearRing);
+        Element coordinates = new Element("coordinates");
+        linearRing.addContent(coordinates);
+
+        return coordinates;
     }
 
 }
