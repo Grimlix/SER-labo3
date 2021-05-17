@@ -28,7 +28,6 @@ import org.json.simple.parser.ParseException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +51,6 @@ public class Main {
         } catch (IOException e){
             e.getMessage();
         }
-
 
     }
 
@@ -185,9 +183,12 @@ public class Main {
 
             } else { //type multipolygon
 
+                Element multiGeometry = new Element("MultiGeometry");
+                placemark.addContent(multiGeometry);
+
                 //Loop sur tous les polygones
                 for(int i = 0; i < ((Country_Multipolygon) country).getList_of_coordinates_list().size(); i++){
-                    Element coordinates = genereate_kml_linearRing(placemark);
+                    Element coordinates = genereate_kml_linearRing(multiGeometry);
                     StringBuilder all_coordinates = generate_all_coordinates(((Country_Multipolygon) country).getList_of_coordinates_list().get(i));
                     coordinates.setText(all_coordinates.toString());
                 }
@@ -211,7 +212,7 @@ public class Main {
         StringBuilder str = new StringBuilder();
         for (String s : list) {
             str.append(s);
-            str.append("\n\t\t\t\t");
+            str.append(" ");
         }
         return str;
     }
