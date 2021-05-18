@@ -47,7 +47,7 @@ public class Main {
         }
 
         try{
-            creating_KML_file("test.kml", country_list);
+            creating_KML_file("countries.kml", country_list);
         } catch (IOException e){
             e.getMessage();
         }
@@ -105,9 +105,7 @@ public class Main {
 
                     //On crée la liste de coordinates reformulées.
                     coordinates_list = reformulate_coordinates(coordinates_arr);
-
-                    //On crée le pays de type polygone
-                    country = new Country_Polygon(country_name, country_abrv, coordinates_list);
+                    list_of_coordinates_list.add(coordinates_list);
 
                 }else{ //multipolygone
 
@@ -121,10 +119,8 @@ public class Main {
                         list_of_coordinates_list.add(coordinates_list);
                     }
 
-                    //Création du pays de type multipolygon
-                    country = new Country_Multipolygon(country_name, country_abrv, list_of_coordinates_list);
                 }
-
+                country = new Country(country_name, country_abrv, coordinates_type, list_of_coordinates_list);
                 country_list.add(country);
             }
 
@@ -164,35 +160,34 @@ public class Main {
         Document document = new Document(kml);
         Element doc = new Element("Document"); // KML doit avoir qu'un seul element en dessous de la racine
 
-        // TODO : Fonction pas
-        // xmlns="http://www.opengis.net/kml/2.2"
-        //kml.setAttribute(new Attribute("xmlns", "http://www.opengis.net/kml/2.2"));
+        Element coordinates = null;
+        Element placemark = null;
+        Element parent_element = null;
 
         for(Country country : country_list){
 
             // Elements de base (Placemark, nom_pays)
-            Element placemark = new Element("Placemark");
+            placemark = new Element("Placemark");
             doc.addContent(placemark);
             placemark.addContent(new Element("name").setText(country.getName()));
 
-            if(country.getClass() == Country_Polygon.class){ //type polygon
-                Element coordinates = genereate_kml_linearRing(placemark);
-                StringBuilder all_coordinates = generate_all_coordinates(((Country_Polygon) country).getCoordinates_list());
-
-                coordinates.setText(all_coordinates.toString());
-
-            } else { //type multipolygon
-
-                Element multiGeometry = new Element("MultiGeometry");
-                placemark.addContent(multiGeometry);
-
-                //Loop sur tous les polygones
-                for(int i = 0; i < ((Country_Multipolygon) country).getList_of_coordinates_list().size(); i++){
-                    Element coordinates = genereate_kml_linearRing(multiGeometry);
-                    StringBuilder all_coordinates = generate_all_coordinates(((Country_Multipolygon) country).getList_of_coordinates_list().get(i));
-                    coordinates.setText(all_coordinates.toString());
-                }
+            // Dans le cas d'un pays multipolygon il faut rajouter la balise
+            //<MultiGeometry> pour que le fichier sache qu'il y a plusieurs polygons.
+            if(country.getType().equals("MultiPolygon")){
+                parent_element = new Element("MultiGeometry");
+                placemark.addContent(parent_element);
+            }else{
+                parent_element = placemark;
             }
+
+            // On y met toutes les balises nécessaires et les coordonnées.
+            for(int i = 0; i < country.getList_of_coordinates_list().size(); i++){
+                // L'element parent correspond à <Placemark> si polygon et <MultiGeomerty> si multipolygon
+                coordinates = genereate_kml_linearRing(parent_element);
+                StringBuilder all_coordinates = generate_all_coordinates(country.getList_of_coordinates_list().get(i));
+                coordinates.setText(all_coordinates.toString());
+            }
+
         }
 
         document.getRootElement().addContent(doc);
@@ -210,8 +205,8 @@ public class Main {
      */
     private static StringBuilder generate_all_coordinates(List<String> list){
         StringBuilder str = new StringBuilder();
-        for (String s : list) {
-            str.append(s);
+        for (String coordinates : list) {
+            str.append(coordinates);
             str.append(" ");
         }
         return str;
@@ -223,18 +218,6 @@ public class Main {
      * @return : l'élément JSON coordinates dans lequel on va y mettre les coordonnées.
      */
     private static Element genereate_kml_linearRing(Element parent_elem){
-
-        /*  VERSION AVEC POLYGONE, PAS CELLE QU?ON VEUT */
-        //Element polygon = new Element("Polygon");
-        //parent_elem.addContent(polygon);
-        //polygon.addContent(new Element("altitudeMode").setText("absolute"));
-        //Element outerBoundaryIs = new Element("outerBoundaryIs");
-        //polygon.addContent(outerBoundaryIs);
-        //Element linearRing = new Element("LinearRing");
-        //outerBoundaryIs.addContent(linearRing);
-        //Element coordinates = new Element("coordinates");
-        //linearRing.addContent(coordinates);
-
         Element linearRing = new Element("LinearRing");
         parent_elem.addContent(linearRing);
         Element coordinates = new Element("coordinates");
