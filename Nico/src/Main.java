@@ -35,15 +35,16 @@ public class Main {
 
     public static void main(String[] args){
 
-        //Creaton du json parser
+        //Creation du json parser
         JSONParser jsonParser = new JSONParser();
 
+        //Nom du fichier à analyser (path)
         String filename = "countries.geojson";
         List<Country> country_list = parsing_country_list(jsonParser, filename);
 
         // AFFICHAGE CLASSIQUE
-        for(int i = 0; i < country_list.size(); i++){
-            System.out.println(country_list.get(i));
+        for (Country country : country_list) {
+            System.out.println(country);
         }
 
         try{
